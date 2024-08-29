@@ -1,9 +1,3 @@
-content
-static
-templates
-all.py
-all.txt
-model.py
 venv/
 best.pt
 yolov10n.pt

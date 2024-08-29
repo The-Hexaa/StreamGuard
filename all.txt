@@ -1,0 +1,5 @@
+you need to mount the static file as well
+
+if image is sent from the frontend to the backend in formData, it is usually in binary format. 
+* first convert it into numpy array using numpy function
+* then, convert the numpy array to the image to send it to the im.read()
