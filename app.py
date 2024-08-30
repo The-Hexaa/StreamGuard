@@ -119,10 +119,7 @@ async def video_feed():
         cap = cv2.VideoCapture(url)
         if not cap.isOpened():
             print("Error: Could not open video stream.")
-            return JSONResponse(
-            status_code=500,
-            content={"detail": "Error: Could not open video stream."}
-        )
+            return
 
         fourcc = cv2.VideoWriter_fourcc(*'vp80')
         frame_width = int(cap.get(3))
@@ -138,7 +135,6 @@ async def video_feed():
                 print(f"Error: Could not open video writer with path {output_file_path}.")
                 return
 
-
             if not success:
                 print("Error: Could not read frame.")
                 on_modified()
@@ -146,10 +142,7 @@ async def video_feed():
                 out.release()
                 break
 
-            if frame is not None:
-                out.write(frame)
-                print("Frame written to video.")
-            
+            out.write(frame)
             results = model(frame)
 
             similarity_results = getSimilarity(frame)
@@ -212,15 +205,56 @@ def encodeFace(faces):
     print("Face encoded.")
     return embeddings
 
+# def getSimilarity(video_frame):
+#     similarity_results = []
+#     directory_path = 'content/tagged'
+#     for filename in os.listdir(directory_path):
+#         file_path = os.path.join(directory_path, filename)
+#         tag_image = cv2.imread(file_path)  #have to be single pic
+
+#         crop_faces_from_frame_arr = getYoloFace_multiple_face(video_frame)  # arr could be multiple
+#         tag_face2_img = getYoloFace_multiple_face(tag_image)  # arr but one face only
+
+#         if(len(tag_face2_img) == 0):
+#             print("Cant detected face in face2_img")
+#             return
+    
+#         elif(len(crop_faces_from_frame_arr) == 0):
+#             print("Cant detected face in faccrop_faces_from_frame_arre1_img")
+#             return
+
+#         face1_embeddings = encodeFace(crop_faces_from_frame_arr) # arr could be multiple
+#         face2_embeddings = encodeFace(tag_face2_img) # arr but one face only
+
+#         min_similarity = 5.0
+#         for index, face_from_video_frame in enumerate(face1_embeddings):
+#             similarity = np.linalg.norm(face_from_video_frame - face2_embeddings)
+            
+#             if(similarity < min_similarity):
+#                 min_similarity = similarity
+
+#             similarity_results.append((similarity, filename))
+#             # print(f"''{filename}'', Similarity score with {index+1} face from video frame: {similarity}")
+    
+#     if min_similarity != 5.0:
+#         asyncio.run(send_mail_to_admin(filename, min_similarity))
+#     return similarity_results
+
+
 def getSimilarity(video_frame):
     similarity_results = []
     directory_path = 'content/tagged'
+    
+    crop_faces_from_frame_arr = getYoloFace_multiple_face(video_frame)  # arr could be multiple
+    face1_embeddings = encodeFace(crop_faces_from_frame_arr) # arr could be multiple
+    
     for filename in os.listdir(directory_path):
         file_path = os.path.join(directory_path, filename)
         tag_image = cv2.imread(file_path)  #have to be single pic
 
-        crop_faces_from_frame_arr = getYoloFace_multiple_face(video_frame)  # arr could be multiple
         tag_face2_img = getYoloFace_multiple_face(tag_image)  # arr but one face only
+        tag_face2_embeddings = encodeFace(tag_face2_img) # arr but one face only tagged
+
 
         if(len(tag_face2_img) == 0):
             print("Cant detected face in face2_img")
@@ -230,23 +264,17 @@ def getSimilarity(video_frame):
             print("Cant detected face in faccrop_faces_from_frame_arre1_img")
             return
 
-        face1_embeddings = encodeFace(crop_faces_from_frame_arr) # arr could be multiple
-        face2_embeddings = encodeFace(tag_face2_img) # arr but one face only
-
         min_similarity = 5.0
         for index, face_from_video_frame in enumerate(face1_embeddings):
-            similarity = np.linalg.norm(face_from_video_frame - face2_embeddings)
-            
-            if(similarity < min_similarity):
-                min_similarity = similarity
+            similarity = np.linalg.norm(face_from_video_frame - tag_face2_embeddings)
+            min_similarity = min(min_similarity, similarity)
 
             similarity_results.append((similarity, filename))
             # print(f"''{filename}'', Similarity score with {index+1} face from video frame: {similarity}")
     
-    if min_similarity != 5.0:
+    if min_similarity < 0.7:
         asyncio.run(send_mail_to_admin(filename, min_similarity))
     return similarity_results
-
 
 
 @app.get("/record", response_class=HTMLResponse)

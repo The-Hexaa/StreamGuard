@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StreamGuard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <title>StreamGuard - Live Stream</title>
     <style>
         /* General Styles */
         body {
@@ -60,60 +59,48 @@
             color: #ddd;
         }
 
-        /* Video Container */
-        #videoContainer {
+        /* Main Content Styles */
+        main {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
             background: #fff;
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            text-align: center;
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
-            margin-top: 30px;
         }
 
-        /* Buttons */
-        button {
+        h1 {
+            font-size: 36px;
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        /* Video Feed */
+        #videoFeed {
+            border: 5px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            max-width: 100%;
+        }
+
+        /* Button Styling */
+        #screenshotBtn {
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 25px;
+            font-size: 18px;
             border-radius: 5px;
             cursor: pointer;
-            margin: 10px;
             transition: background-color 0.3s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
         }
 
-        button:hover {
+        #screenshotBtn:hover {
             background-color: #45a049;
-        }
-
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-
-        /* Screenshot Container */
-        #cropperContainer {
-            width: 100%;
-            max-width: 640px;
-            height: auto;
-            overflow: hidden;
-            position: relative;
-            margin: 0 auto;
-            background-color: #e9e9e9;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-        }
-
-        #screenshotCanvas {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin: 0 auto;
         }
     </style>
 </head>
@@ -122,33 +109,21 @@
         <div class="header-container">
             <div class="header-title">StreamGuard</div>
             <nav>
-                <a href="#home">Home</a>
-                <a href="#features">Features</a>
-                <a href="#about">About</a>
-                <a href="#contact">Contact</a>
+                <a href="/">Home</a>
+                <a href="/record">Go on Recording</a>
             </nav>
         </div>
     </header>
 
-    <div id="videoContainer">
-        <h1>Video Player</h1>
-        <video id="videoElement" width="640" height="360" controls>
-            <source src="static/output_video.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+    <main>
+        <h1>Live Video Stream</h1>
+        <img id="videoFeed" 
+        src="/video_feed" width="800" height="600"
+        alt="Video feed not available"/>
+        <br>
+        <button id="screenshotBtn">Tag a person</button>
+    </main>
 
-        <br><br>
-
-        <button id="screenshotButton">Take Screenshot</button>
-        <button id="cropButton" style="display:none;">Tag</button>
-
-        <h2>Screenshot:</h2>
-        <div id="cropperContainer">
-            <canvas id="screenshotCanvas"></canvas>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <script>
         document.getElementById("videoFeed").addEventListener("error", function() {
             this.style.display = "none"; // Hide the image
