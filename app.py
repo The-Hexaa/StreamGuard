@@ -2,7 +2,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi import Request
 from fastapi import FastAPI
 import os
@@ -15,8 +15,8 @@ from ultralytics import YOLO
 import supervision as sv
 from keras_facenet import FaceNet
 import numpy as np
-
-
+from file_monitor import on_modified, send_mail_to_admin
+import asyncio
 
 app = FastAPI()
 model = YOLO('best.pt') 
@@ -32,8 +32,21 @@ templates = Jinja2Templates(directory="templates")
 def generate_random_string(length=5):
     characters = string.ascii_letters + string.digits  # Includes uppercase, lowercase letters, and digits
     return ''.join(random.choice(characters) for _ in range(length))
+@app.get("/video")
+async def serve_video(filename: str):
+    """
+    Serve a video file.
 
-
+    To call this endpoint using curl:
+    curl -X 'GET' \
+      'http://127.0.0.1:8000/video?filename=output.mp4' \
+      -H 'accept: application/json'
+    """
+    file_path = os.path.join('content/record', filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    else:
+        return {"error": "File not found"}
 
 @app.get("/", response_class=HTMLResponse)
 async def get_html(request: Request):
@@ -74,6 +87,28 @@ async def get_html(request: Request):
     """
     return HTMLResponse(content=html_content)
 
+def generate_random_string(length=5):
+    characters = string.ascii_letters + string.digits  # Includes uppercase, lowercase letters, and digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
+
+@app.post("/upload")
+async def upload_image(image: UploadFile = File(...)):
+    # try:
+        # Read the image file
+        contents = await image.read()
+        
+        file_path = 'content/tagged/' + generate_random_string() + '.png'
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        # Optionally, you can process the image here
+
+        # thief_getYoloFace_embed_and_save_it()
+
+    #     return JSONResponse(content={"message": "Image uploaded successfully!"}, status_code=200)
+    # except Exception as e:
+    #     return JSONResponse(content={"message": f"Failed to upload image: {str(e)}"}, status_code=500)
 
 
 @app.get("/video_feed")
@@ -85,15 +120,13 @@ async def video_feed():
             print("Error: Could not open video stream.")
             return
 
-        fourcc = cv2.VideoWriter_fourcc('m','p','4','v')
+        fourcc = cv2.VideoWriter_fourcc(*'vp80')
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
-        output_file_path = 'content/record/output.mp4'
+        output_file_path = 'content/record/output.webm'
         print(f"Frame width: {frame_width}, Frame height: {frame_height}")
-        out = cv2.VideoWriter(output_file_path, fourcc, 10.0, (frame_width, frame_height))
+        out = cv2.VideoWriter(output_file_path, fourcc, 30.0, (frame_width, frame_height))
 
-
-        
         while True:
             success, frame = cap.read()
 
@@ -104,6 +137,9 @@ async def video_feed():
 
             if not success:
                 print("Error: Could not read frame.")
+                on_modified()
+                cap.release()  # Release the capture when done
+                out.release()
                 break
 
             if frame is not None:
@@ -193,11 +229,18 @@ def getSimilarity(video_frame):
         face1_embeddings = encodeFace(crop_faces_from_frame_arr) # arr could be multiple
         face2_embeddings = encodeFace(tag_face2_img) # arr but one face only
 
+        min_similarity = 5.0
         for index, face_from_video_frame in enumerate(face1_embeddings):
             similarity = np.linalg.norm(face_from_video_frame - face2_embeddings)
+            
+            if(similarity < min_similarity):
+                min_similarity = similarity
+
             similarity_results.append((similarity, filename))
             # print(f"''{filename}'', Similarity score with {index+1} face from video frame: {similarity}")
     
+    if min_similarity != 5.0:
+        asyncio.run(send_mail_to_admin(filename, min_similarity))
     return similarity_results
 
 
