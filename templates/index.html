@@ -3,107 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watch Video and Take Screenshot</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <title>StreamGuard - Live Stream</title>
     <style>
-        #cropperContainer {
-            width: 400px; /* Fixed width for the container */
-            height: 500px; /* Fixed height for the container */
-            overflow: hidden; /* Hide overflow to ensure cropping is contained */
-            position: relative;
+        /* General Styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
-        #screenshotCanvas {
+
+        /* Header Styles */
+        header {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        nav {
+            display: flex;
+            gap: 20px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: #ddd;
+        }
+
+        /* Main Content Styles */
+        main {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #444;
+            margin-bottom: 20px;
+        }
+
+        /* Video Feed */
+        #videoFeed {
+            border: 5px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
             max-width: 100%;
-            max-height: 100%;
+        }
+
+        /* Button Styling */
+        #screenshotBtn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #screenshotBtn:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <h1>Video Player</h1>
-    <video id="videoElement" width="640" height="360" controls>
-        <source src="static/output_video.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
-    
-    
-    <br><br>
-    
-    <button id="screenshotButton">Take Screenshot</button>
-    <button id="cropButton" style="display:none;">Tag</button>
-    
-    <br><br>
-    
-    <h2>Screenshot:</h2>
-    <div id="cropperContainer">
-        <canvas id="screenshotCanvas"></canvas>
-    </div>
+    <header>
+        <div class="header-container">
+            <div class="header-title">StreamGuard</div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/record">Go on Recording</a>
+            </nav>
+        </div>
+    </header>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <main>
+        <h1>Live Video Stream</h1>
+        <img id="videoFeed" 
+        src="/video_feed" width="800" height="600"
+        alt="Video feed not available"/>
+        <br>
+        <button id="screenshotBtn">Tag a person</button>
+    </main>
+
     <script>
-        const video = document.getElementById('videoElement');
-        const canvas = document.getElementById('screenshotCanvas');
-        const screenshotButton = document.getElementById('screenshotButton');
-        const cropButton = document.getElementById('cropButton');
-        const context = canvas.getContext('2d');
-        let cropper;
+        document.getElementById("videoFeed").addEventListener("error", function() {
+            this.style.display = "none"; // Hide the image
+            const message = document.createElement("p");
+            message.textContent = "Please open Video streaming first";
+            message.style.color = "red";
+            message.style.fontSize = "20px";
+            document.body.appendChild(message);
+        });
 
-        function adjustCanvasSize() {
-            canvas.width = video.videoWidth / 2;
-            canvas.height = video.videoHeight / 2;
-        }
-        
-        screenshotButton.addEventListener('click', () => {
-            adjustCanvasSize();
-
-            // Draw the video frame to the canvas
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            cropButton.style.display = 'inline'; // Show the crop button
-
-            // Initialize CropperJS on the canvas
-            if (cropper) cropper.destroy(); // Destroy previous instance if it exists
-
-            cropper = new Cropper(canvas, {
-                aspectRatio: NaN, // Allows free cropping
-                viewMode: 1,
-                background: false,
-                autoCropArea: 1,
-                ready() {
-                cropButton.addEventListener('click', async () => {
-                // Get the cropped canvas
-                const croppedCanvas = cropper.getCroppedCanvas();
-
-                // Convert cropped canvas to a Blob
-                croppedCanvas.toBlob(async (blob) => {
-
-                    const formData = new FormData();
-                    formData.append('image', blob, 'snapshot.png');
-
-                    try {
-                        // Send the image to the backend
-                        const response = await fetch('/upload', {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        if (response.ok) {
-                            alert('Image uploaded successfully!');
-                        } else {
-                            alert('Failed to upload image.');
-                        }
-
-                    } 
-                    catch (error) {
-                        console.error('Error uploading image:', error);
-                        alert('Error uploading image.');
-                    }
-                }, 'image/png');
-    });
-}
-
-            });
+        document.getElementById("screenshotBtn").addEventListener("click", function() {
+            window.location.href = "/record";
         });
     </script>
 </body>
 </html>
-
