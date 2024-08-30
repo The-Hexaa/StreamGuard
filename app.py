@@ -50,42 +50,43 @@ async def serve_video(filename: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def get_html(request: Request):
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Live Stream</title>
-    </head>
-    <body>
-        <h1>Live Video Stream</h1>
-        <img id="videoFeed" src="/video_feed" width="800" height="600" />
-        <button id="screenshotBtn">Tag a person</button>
+    # html_content = """
+    # <!DOCTYPE html>
+    # <html>
+    # <head>
+    #     <title>Live Stream</title>
+    # </head>
+    # <body>
+    #     <h1>Live Video Stream</h1>
+    #     <img id="videoFeed" src="/video_feed" width="800" height="600" />
+    #     <button id="screenshotBtn">Tag a person</button>
 
-        <script>
-        document.getElementById("screenshotBtn").addEventListener("click", function() {
-            fetch('/capture_frame', { method: 'POST' })
-                .then(response => {
-                    if (response.ok) {
-                        return response.blob();
-                    } else {
-                        throw new Error('Failed to capture frame');
-                    }
-                })
-                .then(blob => {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'screenshot.jpg';
-                    link.click();
-                })
-                .catch(error => {
-                    alert('Error: ' + error.message);
-                });
-        });
-        </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+    #     <script>
+    #     document.getElementById("screenshotBtn").addEventListener("click", function() {
+    #         fetch('/capture_frame', { method: 'POST' })
+    #             .then(response => {
+    #                 if (response.ok) {
+    #                     return response.blob();
+    #                 } else {
+    #                     throw new Error('Failed to capture frame');
+    #                 }
+    #             })
+    #             .then(blob => {
+    #                 const link = document.createElement('a');
+    #                 link.href = URL.createObjectURL(blob);
+    #                 link.download = 'screenshot.jpg';
+    #                 link.click();
+    #             })
+    #             .catch(error => {
+    #                 alert('Error: ' + error.message);
+    #             });
+    #     });
+    #     </script>
+    # </body>
+    # </html>
+    # """
+    # return HTMLResponse(content=html_content)
+    return templates.TemplateResponse("index.html", {"request": request})
 
 def generate_random_string(length=5):
     characters = string.ascii_letters + string.digits  # Includes uppercase, lowercase letters, and digits
@@ -118,7 +119,10 @@ async def video_feed():
         cap = cv2.VideoCapture(url)
         if not cap.isOpened():
             print("Error: Could not open video stream.")
-            return
+            return JSONResponse(
+            status_code=500,
+            content={"detail": "Error: Could not open video stream."}
+        )
 
         fourcc = cv2.VideoWriter_fourcc(*'vp80')
         frame_width = int(cap.get(3))
@@ -247,4 +251,4 @@ def getSimilarity(video_frame):
 
 @app.get("/record", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("record.html", {"request": request})

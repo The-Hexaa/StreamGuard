@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Video and Take Screenshot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <style>
+        #cropperContainer {
+            width: 400px; /* Fixed width for the container */
+            height: 500px; /* Fixed height for the container */
+            overflow: hidden; /* Hide overflow to ensure cropping is contained */
+            position: relative;
+        }
+        #screenshotCanvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Player</h1>
+    <video id="videoElement" width="640" height="360" controls>
+        <source src="static/output_video.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    
+    <br><br>
+    
+    <button id="screenshotButton">Take Screenshot</button>
+    <button id="cropButton" style="display:none;">Tag</button>
+    
+    <br><br>
+    
+    <h2>Screenshot:</h2>
+    <div id="cropperContainer">
+        <canvas id="screenshotCanvas"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script>
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('screenshotCanvas');
+        const screenshotButton = document.getElementById('screenshotButton');
+        const cropButton = document.getElementById('cropButton');
+        const context = canvas.getContext('2d');
+        let cropper;
+
+        function adjustCanvasSize() {
+            canvas.width = video.videoWidth / 2;
+            canvas.height = video.videoHeight / 2;
+        }
+        
+        screenshotButton.addEventListener('click', () => {
+            adjustCanvasSize();
+
+            // Draw the video frame to the canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            cropButton.style.display = 'inline'; // Show the crop button
+
+            // Initialize CropperJS on the canvas
+            if (cropper) cropper.destroy(); // Destroy previous instance if it exists
+
+            cropper = new Cropper(canvas, {
+                aspectRatio: NaN, // Allows free cropping
+                viewMode: 1,
+                background: false,
+                autoCropArea: 1,
+                ready() {
+                cropButton.addEventListener('click', async () => {
+                // Get the cropped canvas
+                const croppedCanvas = cropper.getCroppedCanvas();
+
+                // Convert cropped canvas to a Blob
+                croppedCanvas.toBlob(async (blob) => {
+
+                    const formData = new FormData();
+                    formData.append('image', blob, 'snapshot.png');
+
+                    try {
+                        // Send the image to the backend
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            alert('Image uploaded successfully!');
+                        } else {
+                            alert('Failed to upload image.');
+                        }
+
+                    } 
+                    catch (error) {
+                        console.error('Error uploading image:', error);
+                        alert('Error uploading image.');
+                    }
+                }, 'image/png');
+    });
+}
+
+            });
+        });
+    </script>
+</body>
+</html>
+
