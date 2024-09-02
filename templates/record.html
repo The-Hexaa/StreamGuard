@@ -77,11 +77,9 @@
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 5px 10px;
             border-radius: 5px;
             cursor: pointer;
-            margin: 10px;
             transition: background-color 0.3s ease;
         }
 
@@ -124,6 +122,7 @@
             <nav>
                 <a href="/">Home</a>
                 <a href="/record">Go on Recording</a>
+                <button onclick="handleLogout(event)">Logout</button>
             </nav>
         </div>
     </header>
@@ -148,6 +147,30 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <script>
+
+        function handleLogout(event) {
+            event.preventDefault();
+            fetch('/logout', {
+            method: 'GET', 
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = '/login';
+
+            } else {
+                alert('Logout failed. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error during logout:', error);
+            alert('An error occurred. Please try again.');
+        });
+
+        }
+
         const video = document.getElementById('videoElement');
         const canvas = document.getElementById('screenshotCanvas');
         const screenshotButton = document.getElementById('screenshotButton');

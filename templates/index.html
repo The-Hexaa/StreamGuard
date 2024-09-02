@@ -76,6 +76,19 @@
             color: #444;
             margin-bottom: 20px;
         }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
 
         /* Video Feed */
         #videoFeed {
@@ -111,6 +124,7 @@
             <nav>
                 <a href="/">Home</a>
                 <a href="/record">Go on Recording</a>
+                <button onclick="handleLogout(event)">Logout</button>
             </nav>
         </div>
     </header>
@@ -125,6 +139,29 @@
     </main>
 
     <script>
+
+        function handleLogout(event) {
+            event.preventDefault();
+            fetch('/logout', {
+            method: 'GET', 
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = '/login';
+            } else {
+                alert('Logout failed. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error during logout:', error);
+            alert('An error occurred. Please try again.');
+        });
+
+        }
+
         document.getElementById("videoFeed").addEventListener("error", function() {
             this.style.display = "none"; // Hide the image
             const message = document.createElement("p");
