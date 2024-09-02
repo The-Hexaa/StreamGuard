@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  fastapi:
+    build: .
+    container_name: StreamGuard
+    ports:
+      - "7979:8002"
+    volumes:
+      - ./static:/app/static
+      - ./content:/app/content
+      - .db:/app/db
+
+    environment:
+      - DATABASE_URL=sqlite:///app/db/database.db
