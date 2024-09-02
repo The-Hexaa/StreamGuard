@@ -47,7 +47,7 @@ jobs:
       
       - name: Push
         run: |
-          docker push streamguard:latest 116.58.60.115:6000/streamguard:latest
+          docker push 116.58.60.115:6000/streamguard:latest
 
   deploy:
     runs-on: ubuntu-latest
