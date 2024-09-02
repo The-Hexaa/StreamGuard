@@ -36,18 +36,18 @@ jobs:
       
       - name: Build Docker images
         run: |
-          docker build -t StreamGuard:latest .
+          docker build -t streamguard:latest .
       
       - name: Tagging
         run: |
-          docker tag StreamGuard:latest 116.68.50.115:6000/StreamGuard:latest
+          docker tag streamguard:latest 116.68.50.115:6000/streamguard:latest
       
       - name: Log in to Docker registry
         run: echo "umer123" | docker login 116.68.50.115:6000 -u umer --password-stdin
       
       - name: Push
         run: |
-          docker push StreamGuard:latest 116.68.50.115:6000/StreamGuard:latest
+          docker push streamguard:latest 116.68.50.115:6000/streamguard:latest
 
   deploy:
     runs-on: ubuntu-latest
