@@ -1,33 +1,24 @@
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi import Request, status, HTTPException
-from fastapi import FastAPI
+from fastapi import UploadFile, File
 import os
 import string
 import random
 from fastapi import FastAPI, Response
 import cv2
-from ultralytics import YOLO
-import supervision as sv
-from keras_facenet import FaceNet
-import numpy as np
-from file_monitor import on_modified, send_mail_to_admin
-import asyncio
 from sqlalchemy import create_engine, Column, Integer, String, select
 from sqlalchemy.orm import sessionmaker, declarative_base
 from passlib.context import CryptContext
 from itsdangerous import URLSafeTimedSerializer, BadSignature
 from starlette.middleware.sessions import SessionMiddleware
-from fastapi import FastAPI, Request, Form, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form, Depends, status, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import JSONResponse
-
+from starlette.responses import JSONResponse, FileResponse
+import sys
+import requests
+import numpy as np
 # Database setup
 DATABASE_URL = "sqlite:///./test.db"
 Base = declarative_base()
@@ -38,7 +29,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = "your-secret-key"
 serializer = URLSafeTimedSerializer(SECRET_KEY)
-
 
 # Models
 class User(Base):
@@ -51,7 +41,6 @@ class User(Base):
 
 Base.metadata.create_all(bind=engine)
 
-
 # Dependency to get DB session
 def get_db():
     db = SessionLocal()
@@ -61,35 +50,14 @@ def get_db():
         db.close()
 
 app = FastAPI()
-model = YOLO('best.pt') 
-embedder = FaceNet()
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
-
 
 # Mount the static directory to serve static files like videos
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
-def generate_random_string(length=5):
-    characters = string.ascii_letters + string.digits  # Includes uppercase, lowercase letters, and digits
-    return ''.join(random.choice(characters) for _ in range(length))
-@app.get("/video")
-async def serve_video(filename: str):
-    """
-    Serve a video file.
-
-    To call this endpoint using curl:
-    curl -X 'GET' \
-      'http://127.0.0.1:8000/video?filename=output.mp4' \
-      -H 'accept: application/json'
-    """
-    file_path = os.path.join('content/record', filename)
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-    else:
-        return {"error": "File not found"}
 
 def generate_random_string(length=5):
     characters = string.ascii_letters + string.digits  # Includes uppercase, lowercase letters, and digits
@@ -114,12 +82,14 @@ async def upload_image(image: UploadFile = File(...)):
     # except Exception as e:
     #     return JSONResponse(content={"message": f"Failed to upload image: {str(e)}"}, status_code=500)
 
-
+test_url = "http://localhost:7978/get_frame_to_working_return_Frame/"
 @app.get("/video_feed")
 async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
     def generate_frames():
-        url = 'http://192.168.2.106:4747/video'
+
+        url = 'http://192.168.2.67:4747/video'
         cap = cv2.VideoCapture(url)
+        
         if not cap.isOpened():
             print("Error: Could not open video stream.")
             return
@@ -146,32 +116,29 @@ async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
                 break
 
             out.write(frame)
-            results = model(frame)
-
-            similarity_results = getSimilarity(frame)
-
-            detections = sv.Detections.from_ultralytics(results[0])
-
-            for i in range(len(detections)):
-                if i < len(similarity_results):
-                    similarity, filename = similarity_results[i]
-                    detections.data['class_name'][i]  = f"{similarity:.2f} - {filename}"
-
-            box_annotator = sv.BoundingBoxAnnotator(thickness=2)
-            label_annotator = sv.LabelAnnotator(text_thickness=2, text_scale=1)
-
-            frame = box_annotator.annotate(scene=frame, detections=detections)
-            frame = label_annotator.annotate(scene=frame, detections=detections)
-
-
             _, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
+
+
+            # frame = get_frame_to_working_return_Frame(frame)
+            
+            try:
+                response = requests.post(test_url, files={"file": ("frame.jpg", frame, "image/jpeg")})
+                print("response----", response)
+            except requests.exceptions.RequestException as e:
+                print(f"An error occurred: {e}")
+            
+            # response = requests.post(test_url)
+            
+            nparr = np.frombuffer(response.content, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         
-        cap.release()  # Release the capture when done
+        cap.release()
         out.release()
-
 
     user = get_user_by_email(db, request.session.get("user"))
 
@@ -179,110 +146,6 @@ async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=303)
     return StreamingResponse(generate_frames(), media_type='multipart/x-mixed-replace; boundary=frame')
 
-
-
-def getYoloFace_multiple_face(img):
-    results = model(img)
-
-    detections = sv.Detections.from_ultralytics(results[0])
-
-    all_face_xyxy = detections.xyxy
-
-    crop_faces = []
-    for index, one_face_xyxy in enumerate(all_face_xyxy):
-        x1, y1, x2, y2 = map(int, one_face_xyxy)
-
-        face = img[y1:y2, x1:x2]
-        face_img_resized = cv2.resize(face, (500, 500))
-        crop_faces.append(face_img_resized)
-
-    return crop_faces
-
-def encodeFace(faces):    
-    embeddings = []
-    for face in faces:
-        # FaceNet expects images of size (160, 160)
-        face_img_resized = cv2.resize(face, (160, 160))
-        
-        # Expand dimensions since FaceNet expects a batch of images
-        face_img_resized = np.expand_dims(face_img_resized, axis=0)
-        
-        # Encode the face using FaceNet
-        embeddings.append(embedder.embeddings(face_img_resized)[0])
-        
-    print("Face encoded.")
-    return embeddings
-
-# def getSimilarity(video_frame):
-#     similarity_results = []
-#     directory_path = 'content/tagged'
-#     for filename in os.listdir(directory_path):
-#         file_path = os.path.join(directory_path, filename)
-#         tag_image = cv2.imread(file_path)  #have to be single pic
-
-#         crop_faces_from_frame_arr = getYoloFace_multiple_face(video_frame)  # arr could be multiple
-#         tag_face2_img = getYoloFace_multiple_face(tag_image)  # arr but one face only
-
-#         if(len(tag_face2_img) == 0):
-#             print("Cant detected face in face2_img")
-#             return
-    
-#         elif(len(crop_faces_from_frame_arr) == 0):
-#             print("Cant detected face in faccrop_faces_from_frame_arre1_img")
-#             return
-
-#         face1_embeddings = encodeFace(crop_faces_from_frame_arr) # arr could be multiple
-#         face2_embeddings = encodeFace(tag_face2_img) # arr but one face only
-
-#         min_similarity = 5.0
-#         for index, face_from_video_frame in enumerate(face1_embeddings):
-#             similarity = np.linalg.norm(face_from_video_frame - face2_embeddings)
-            
-#             if(similarity < min_similarity):
-#                 min_similarity = similarity
-
-#             similarity_results.append((similarity, filename))
-#             # print(f"''{filename}'', Similarity score with {index+1} face from video frame: {similarity}")
-    
-#     if min_similarity != 5.0:
-#         asyncio.run(send_mail_to_admin(filename, min_similarity))
-#     return similarity_results
-
-
-def getSimilarity(video_frame):
-    similarity_results = []
-    directory_path = 'content/tagged'
-    
-    crop_faces_from_frame_arr = getYoloFace_multiple_face(video_frame)  # arr could be multiple
-    face1_embeddings = encodeFace(crop_faces_from_frame_arr) # arr could be multiple
-    
-    for filename in os.listdir(directory_path):
-        file_path = os.path.join(directory_path, filename)
-        tag_image = cv2.imread(file_path)  #have to be single pic
-
-        tag_face2_img = getYoloFace_multiple_face(tag_image)  # arr but one face only
-        tag_face2_embeddings = encodeFace(tag_face2_img) # arr but one face only tagged
-
-
-        if(len(tag_face2_img) == 0):
-            print("Cant detected face in face2_img")
-            return
-    
-        elif(len(crop_faces_from_frame_arr) == 0):
-            print("Cant detected face in faccrop_faces_from_frame_arre1_img")
-            return
-
-        min_similarity = 5.0
-        for index, face_from_video_frame in enumerate(face1_embeddings):
-            similarity = np.linalg.norm(face_from_video_frame - tag_face2_embeddings)
-            min_similarity = min(min_similarity, similarity)
-
-            similarity_results.append((similarity, filename))
-            # print(f"''{filename}'', Similarity score with {index+1} face from video frame: {similarity}")
-    
-    if min_similarity < 0.7:
-        asyncio.run(send_mail_to_admin(filename, min_similarity))
-    return similarity_results
 
 
 @app.get("/record", response_class=HTMLResponse)
