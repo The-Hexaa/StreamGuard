@@ -9,9 +9,6 @@ COPY requirements.txt .
 
 # Install any needed packages specified in requirements.txt
 RUN pip install -r requirements.txt
-RUN apt-get update && apt-get install -y libgl1-mesa-glx
-RUN apt-get install -y libglib2.0-0 libsm6 libxext6 libxrender-dev
-run apt-get install -y ffmpeg  libavcodec-extra libx264-dev
 
 # Copy the current directory contents into the container at /app
 COPY . .

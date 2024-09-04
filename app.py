@@ -128,10 +128,12 @@ async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
             except requests.exceptions.RequestException as e:
                 print(f"An error occurred: {e}")
             
-            # response = requests.post(test_url)
-            
             nparr = np.frombuffer(response.content, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
 
 
             yield (b'--frame\r\n'
