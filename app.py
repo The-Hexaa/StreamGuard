@@ -123,7 +123,7 @@ async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
             # frame = get_frame_to_working_return_Frame(frame)
             try:
                 response = requests.post(test_url, files={"file": ("frame.jpg", frame, "image/jpeg")})
-                print("response", response)
+                print("response", response, test_url)
             except requests.exceptions.RequestException as e:
                 print(f"An error occurred: {e}")
             
