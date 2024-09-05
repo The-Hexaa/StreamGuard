@@ -119,7 +119,7 @@ async def upload_image(image: UploadFile = File(...)):
 @app.get("/video_feed")
 async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
     def generate_frames():
-        url = 'http://192.168.2.106:4747/video'
+        url = 'http://192.168.2.67:4747/video'
         cap = cv2.VideoCapture(url)
         if not cap.isOpened():
             print("Error: Could not open video stream.")
