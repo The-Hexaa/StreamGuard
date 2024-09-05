@@ -19,6 +19,7 @@ from starlette.responses import JSONResponse, FileResponse
 import sys
 import requests
 import numpy as np
+from file_monitor import on_modified
 # Database setup
 DATABASE_URL = "sqlite:///./test.db"
 Base = declarative_base()
@@ -119,12 +120,10 @@ async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
             _, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
 
-
             # frame = get_frame_to_working_return_Frame(frame)
-            
             try:
                 response = requests.post(test_url, files={"file": ("frame.jpg", frame, "image/jpeg")})
-                print("response----", response)
+                print("response", response)
             except requests.exceptions.RequestException as e:
                 print(f"An error occurred: {e}")
             
