@@ -83,7 +83,7 @@ async def upload_image(image: UploadFile = File(...)):
     # except Exception as e:
     #     return JSONResponse(content={"message": f"Failed to upload image: {str(e)}"}, status_code=500)
 
-test_url = "http://192.168.2.30:7979//get_frame_to_working_return_Frame/"
+test_url = "http://192.168.2.30:7978//get_frame_to_working_return_Frame/"
 @app.get("/video_feed")
 async def video_feed(request: Request, db: SessionLocal = Depends(get_db)):
     def generate_frames():
