@@ -13,4 +13,3 @@ services:
 
     environment:
       - DATABASE_URL=sqlite:///app/db/database.db
-
